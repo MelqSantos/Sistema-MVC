@@ -54,16 +54,30 @@ namespace Sistema_clinica.Controllers
             agenda.preencherAgendaComSessao(id_sessao);
             ViewBag.listaEstado = agenda.listaEstado;
             ViewBag.listaPagamento = agenda.listaPagamento;
+            ViewBag.listaHoras = agenda.listaHoras;
 
             return View(agenda);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Cadastrar(Agenda novaAgenda, string listaEstado, string listaPagamento)
+        public ActionResult Cadastrar(Agenda novaAgenda, string listaEstado, string listaPagamento, string listaHoras)
         {
+            if (Session["nivel"].ToString() == "3")
+            {
+                listaEstado = "Agendado";
+                listaPagamento = "N";
+            }
+
             novaAgenda.Estado = listaEstado;
             novaAgenda.Pago = char.Parse(listaPagamento);
+            novaAgenda.Data_Hora = new DateTime(novaAgenda.Data.Year, novaAgenda.Data.Month, novaAgenda.Data.Day, Convert.ToInt32(listaHoras), 0, 0);
+
+            var dataExiste = new Agenda().dataOcupada(novaAgenda);
+            if (dataExiste)
+            {
+                ModelState.AddModelError("Hora", "A data e hora escolhida não está disponível");
+            }
 
             Agenda agenda = new Agenda();
             if (ModelState.IsValid)
@@ -77,6 +91,7 @@ namespace Sistema_clinica.Controllers
 
             ViewBag.listaEstado = agenda.listaEstado;
             ViewBag.listaPagamento = agenda.listaPagamento;
+            ViewBag.listaHoras = agenda.listaHoras;
 
             return View(novaAgenda).Mensagem(agenda.erro);
         }
@@ -110,18 +125,36 @@ namespace Sistema_clinica.Controllers
                 agenda.Pago
                 );
 
+            ViewBag.listaHoras = new SelectList(
+                agenda.listaHoras,
+                "Value",
+                "Text",
+                agenda.Data_Hora.Hour
+                );
+
+            //agenda.Data = agenda.Data_Hora.Date;
+            ViewBag.dataH = agenda.Data_Hora.ToString("yyyy-MM-dd");
+
             return View(agenda);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Editar(Agenda agendaEdit, string listaEstado, string listaPagamento)
+        public ActionResult Editar(Agenda agendaEdit, string listaEstado, string listaPagamento, string listaHoras)
         {
             if (Session["nivel"].ToString() != "3")
             {
                 agendaEdit.Estado = listaEstado;
                 agendaEdit.Pago = char.Parse(listaPagamento);
-            }            
+            }
+
+            agendaEdit.Data_Hora = new DateTime(agendaEdit.Data.Year, agendaEdit.Data.Month, agendaEdit.Data.Day, Convert.ToInt32(listaHoras), 0, 0);
+
+            var dataExiste = new Agenda().dataOcupada(agendaEdit);
+            if (dataExiste)
+            {
+                ModelState.AddModelError("Hora", "A data e hora escolhida não está disponível");
+            }
 
             Agenda agenda = new Agenda();
             if (ModelState.IsValid)
@@ -152,6 +185,13 @@ namespace Sistema_clinica.Controllers
                 "Value",
                 "Text",
                 agenda.Pago
+                );
+
+            ViewBag.listaHoras = new SelectList(
+                agenda.listaHoras,
+                "Value",
+                "Text",
+                agenda.Data_Hora.Hour
                 );
 
             return View(agendaEdit).Mensagem(agenda.erro);
